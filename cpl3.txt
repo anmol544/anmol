@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define TABLE_SIZE 100
+
+// Structure for a symbol entry
+typedef struct SymbolEntry {
+    char name[50];
+    int value;
+    struct SymbolEntry* next;
+} SymbolEntry;
+
+// Structure for a symbol table
+typedef struct SymbolTable {
+    SymbolEntry* entries[TABLE_SIZE];
+    struct SymbolTable* parent; // Pointer to the parent symbol table
+} SymbolTable;
+
+// Function to initialize a new symbol table
+SymbolTable* initializeSymbolTable(SymbolTable* parent) {
+    SymbolTable* table = (SymbolTable*)malloc(sizeof(SymbolTable));
+    if (table != NULL) {
+        table->parent = parent;
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            table->entries[i] = NULL;
+        }
+    }
+    return table;
+}
+
+// Hash function to generate index from symbol name
+unsigned int hash(char* name) {
+    unsigned int hash = 0;
+    for (int i = 0; name[i] != '\0'; i++) {
+        hash = (hash * 31) + name[i];
+    }
+    return hash % TABLE_SIZE;
+}
+
+// Function to insert a symbol entry into the symbol table
+void insert(SymbolTable* table, char* name, int value) {
+    unsigned int index = hash(name);
+    SymbolEntry* entry = (SymbolEntry*)malloc(sizeof(SymbolEntry));
+    if (entry != NULL) {
+        strcpy(entry->name, name);
+        entry->value = value;
+        entry->next = table->entries[index];
+        table->entries[index] = entry;
+    }
+}
+
+// Function to lookup a symbol in the symbol table
+int lookup(SymbolTable* table, char* name) {
+    unsigned int index = hash(name);
+    SymbolEntry* entry = table->entries[index];
+    while (entry != NULL) {
+        if (strcmp(entry->name, name) == 0) {
+            return entry->value;
+        }
+        entry = entry->next;
+    }
+    if (table->parent != NULL) {
+        return lookup(table->parent, name);
+    }
+    return -1; // Return -1 if symbol not found in any scope
+}
+
+// Function to delete a symbol table
+void deleteSymbolTable(SymbolTable* table) {
+    if (table != NULL) {
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            SymbolEntry* entry = table->entries[i];
+            while (entry != NULL) {
+                SymbolEntry* temp = entry;
+                entry = entry->next;
+                free(temp);
+            }
+        }
+        free(table);
+    }
+}
+
+int main() {
+    SymbolTable* globalScope = initializeSymbolTable(NULL);
+    SymbolTable* currentScope = globalScope;
+
+    // Test case
+    // Begin initializing scope
+    printf("Initializing scope\n");
+
+    // Assign variable a in the current scope
+    printf("Assigning variable a in the current scope\n");
+    insert(currentScope, "a", 1);
+
+    // Print variable b in the current scope
+    printf("Printing variable b in the current scope: %d\n", lookup(currentScope, "b"));
+
+    // Finalize scope
+    printf("Finalizing scope\n");
+
+    deleteSymbolTable(globalScope);
+    return 0;
+}
